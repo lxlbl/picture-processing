@@ -1,0 +1,86 @@
+from PIL import Image
+from PIL import ImageFilter
+import matplotlib.pyplot as plt
+
+class ImageProcessor:#基类
+    def __init__(self,im,para):#两个数据属性，即待处理的图片实例以及一个参数列表
+        self.im=im
+        self.para=para
+    def process(self):#基类的方法
+        pass
+#定义四个子类，并分别对process这一方法属性进行覆盖
+class GrayScale(ImageProcessor):#子类1，实现图片的灰度化处理
+    def process(self):
+        imgray=self.im.convert('L')
+        #imgray.show()
+        return imgray
+class Tailor(ImageProcessor):#子类2，对图片裁剪或调整大小
+    def process(self):
+        size=self.para[0]
+        imresize=self.im.resize(size)
+        #imresize.show()
+        return imresize
+class Dim(ImageProcessor):#子类3，实现图片的模糊
+    def process(self):
+        imblur=self.im.filter(ImageFilter.BLUR)
+        #imblur.show()
+        return imblur
+class Edge(ImageProcessor):#子类4，实现边缘提取
+    def process(self):
+        imedge=self.im.filter(ImageFilter.CONTOUR)
+        #imedge.show()
+        return imedge
+    
+class ImageShop:
+    #包含四个数据属性，即图片格式，图片文件目录，图片实例的列表以及处理后的图片列表
+    def __init__(self,forma,fpath,ims,ims2):
+        self.forma=forma
+        self.fpath=fpath
+        self.ims=ims
+        self.ims2=ims2
+    def load_images(self):#从某路径加载统一格式的图片，并存入图片实例的列表
+        for i in self.fpath:
+            self.ims.append(Image.open(i))
+    def __batch_ps(self,Process,para):#Process从上述四个子类里面选择
+        for im in self.ims:#对于每一个实例化的图片
+            pro=Process(im,para)#类的实例化
+            self.ims2.append(pro.process())#调用process方法，并将结果图片放在图片列表中
+    def batch_ps(self,*argv):#argv是不定长参数，每个参数形式是（操作名，参数）
+        for p in argv:
+            self.__batch_ps(*p)#调用同一类下的图片处理的方法，参数为不定长参数中每个参数的展开形式
+    def save(self,outpath):
+        for i in range(len(self.ims2)):
+            self.ims2[i].save(outpath[i])#保存处理后的图片
+    def display(self,column):#处理效果展示
+        plt.figure(figsize=(36,36))#画幅
+        row=len(self.ims2)/column#输入列数，算出行数
+        for i in range(len(self.ims2)):
+            plt.subplot(row,column,i+1)#确定每个图片的位置
+            plt.imshow(self.ims2[i])
+        plt.show()
+
+class TestImageShop:#测试类
+    f0='C:/Users/DELL/Desktop/python数据分析/tu1.png'
+    f1='C:/Users/DELL/Desktop/python数据分析/tu2.png'
+    f2='C:/Users/DELL/Desktop/python数据分析/tu3.png'
+    outpath=['C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu1.png','C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu2.png',
+             'C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu3.png','C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu4.png',
+             'C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu5.png','C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu6.png',
+            'C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu7.png','C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu8.png',
+             'C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu9.png','C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu10.png',
+             'C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu11.png','C:/Users/DELL/Desktop/python数据分析/week6outtu/outtu12.png' ]
+    '''outpath=['outtu1.png','outtu2.png',
+             'outtu3.png','outtu4.png',
+             'outtu5.png','outtu6.png']'''
+    fpath=[f0,f1,f2] 
+    argv=[(GrayScale,[(128,128),1]), (Tailor,[(128,128),1]),(Dim,[(128,128),1]), (Edge,[(128,128),1])]
+    def test(self):
+        img=ImageShop('png', self.fpath, [], []) 
+        img.load_images()
+        img.batch_ps(*self.argv)  
+        #img.batch_ps((Dim,[(128,128),1]), (Edge,[(128,128),1]) )  
+        img.save(self.outpath)  
+        img.display(len(self.fpath))
+
+testimageshop=TestImageShop()
+testimageshop.test()
