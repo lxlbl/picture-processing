@@ -1,0 +1,120 @@
+import scipy.stats
+from PIL import Image
+import PIL
+import numpy as np
+import imagehash
+import matplotlib.pyplot as plt
+import fpath_week7
+class ImageQueryError(Exception):#顶级异常类
+    pass
+class ImageQueryShapeNotMatchError(ImageQueryError):#定义形状大小不匹配的异常类
+    def __init__(self,im1,im2):
+        self.width1=im1.size[0]
+        self.height1=im1.size[1]
+        self.width2=im2.size[0]
+        self.height2=im2.size[1]
+        self.message='width1:{},height1:{}  width2:{},height2:{}'.format(self.width1,self.height1,
+                                                                         self.width2,self.height2)#异常类包含图片大小的信息
+class ImageQueryNoSimilarImageFoundError(ImageQueryError):
+    def __init__(self):
+        self.message='ImageQueryNoSimilarImageFoundError'
+        
+class ImageQuery:
+    def __init__(self,pathlist):
+        self.paths=pathlist
+    def _create_and_image(self,fpath):
+        try:
+            im=Image.open(fpath)#利用路径参数打开图片
+        except FileNotFoundError:#异常类捕获
+            print("file path:{}".format(fpath))
+            print("error:FileNotFoundError")
+        except PIL.UnidentifiedImageError:#异常类捕获
+            print("file path:{}".format(fpath))
+            print("error:UnidentifiedImageError")
+        return im
+    def pixel_difference(self,im1,im2):#定义类的方法计算相似度（第一种）
+        differ=0
+        if (im1.size[0]-im2.size[0])*(im1.size[1]-im2.size[1])!=0:#如果进行对比的两张图片大小不一致
+            raise ImageQueryShapeNotMatchError(im1,im2)#抛出异常类
+        else:#直接对两个图片逐相素相减，并累积求和差异的绝对值，继而除以相素总数
+            array1=np.asarray(im1)
+            array2=np.asarray(im2)
+            array=array1-array2
+            for i in array:
+                for j in i:
+                    for k in j:
+                        differ+=abs(k)
+            differ=differ/(array.shape[0]*array.shape[1]*array.shape[2])
+            print (differ)
+        return differ
+    def simili_tude(self,im1,im2):#定义类的方法计算相似度（第二种）
+        #获取图片相素的直方图
+        c_hist_1=im1.histogram()
+        c_hist_2=im2.histogram()
+        p_cor = scipy.stats.pearsonr(c_hist_1, c_hist_2)#计算相似度
+        print(p_cor)
+        '''s_cor = scipy.stats.spearmanr(c_hist_1, c_hist_2)
+        print(s_cor)
+        k_cor = scipy.stats.kendalltau(c_hist_1, c_hist_2)
+        print(k_cor)'''
+        return p_cor[1]#返回p值
+    def hash_differ(self,im1,im2):#计算哈希相似度
+        ahash_1 = imagehash.average_hash(im1)
+        ahash_2 = imagehash.average_hash(im2)
+        print(ahash_1-ahash_2)
+        return (ahash_1-ahash_2)
+    def load_images(self):#加载并生成大量的Image实例
+        imlist=[]
+        for fpath in self.paths:
+            imlist.append(self._create_and_image(fpath))
+        return imlist
+    def search_image(self,path,difference,threshold):#difference用来指定相似性计算的种类，threshold是阈值
+        im0=self._create_and_image(path)#将指定的图片实例化
+        ims=self.load_images()#加载大量图片
+        d=dict()#这里设定的字典的键没有意义
+        q=1#字典的键
+        imssuit=[]
+        if difference==1:
+            for im in ims:
+                try:
+                    d[q]=[self.pixel_difference(im0,im),im]#将每张图片与指定图片计算相应的相似性，加入字典，形成q:[相似性，图片]的字典
+                    q+=1
+                except ImageQueryShapeNotMatchError as iqsnme:#捕获异常
+                    print(iqsnme.message)
+        else:
+            if difference==2:
+                for im in ims:
+                    d[q]=[self.simili_tude(im0,im),im]
+                    q+=1
+            else:
+                for im in ims:
+                    d[q]=[self.hash_differ(im0,im),im]
+                    q+=1
+        ds=sorted(d.items(),key=lambda x: x[1][0], reverse=False)#按照相似性排序
+        for v in ds:
+            if v[1][0]<=threshold:#相似性低于阈值的
+                imssuit.append(v[1][1])#将图片加入列表
+            else:
+                break
+        if len(imssuit)==0:
+            raise ImageQueryNoSimilarImageFoundError()#如果没有图片满足相似性要求，则抛出异常
+        else:#将满足相似性的图片用matplotlib展示出来
+            row=len(imssuit)#列数为1，算出行数
+            plt.figure(figsize=(18,18*row))#画幅
+            for i in range(len(imssuit)):
+                plt.subplot(row,1,i+1)#确定每个图片的位置
+                plt.imshow(imssuit[i])
+            plt.show()
+def main():#实例化类并调用方法
+     pathlist=fpath_week7.pathlist
+     f0="C:/Users/DELL/Desktop/python数据分析/python7/James_Blake/0.jpg"
+     iq=ImageQuery(pathlist)
+     try:
+         iq.search_image(f0,1,120)
+         #pixel_difference,simili_tude,hash_differ
+         iq.search_image(f0,2,0.0000000005)
+         iq.search_image(f0,3,20)
+     except ImageQueryNoSimilarImageFoundError as iqnsife:#捕获异常
+         print(iqnsife.message)
+if __name__=='__main__':
+    main()#实现main函数
