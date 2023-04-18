@@ -1,0 +1,87 @@
+from PIL import Image
+import numpy as np
+
+class FaceDataset:
+    def __init__(self,path):
+        self._path = path #数据属性_path
+        self._a = 0 #计数变量
+    #实现__len__方法，返回数据集中图片的数量
+    def __len__(self):
+        return len(self._path)
+    def __iter__(self): # 实现__iter__方法，使得该类支持迭代器相关的操作
+        return self
+    #实现__next__方法，根据类内的图片路径列表，迭代地加载并以ndarray形式返回图片数据。
+    def __next__(self):
+        if self._a < len(self):
+            im = Image.open(self._path[self._a])
+            img = np.array(im)
+            self._a += 1
+            return img
+        else:
+            raise StopIteration("Out of the picture list!")
+    #实现__getitem__方法，使得该类的实例fd支持fd[i]的形式来获取第i+1个图片的ndarray
+    def __getitem__(self,i):
+        g=self.image_generator()
+        if i<len(self):
+            k=0
+            while k<i:
+                next(g)
+                k+=1
+            img = next(g)
+            return img
+        else:
+            raise Exception("该图片不存在")
+    #生成器方法image_generator，能够生成一张图片数据的ndarray形式并返回
+    def image_generator(self):
+        for p in self._path:
+            im = Image.open(p)
+            img = np.array(im)
+            yield img
+        return 'no picture'
+    
+def main(): #对上述生成器和迭代器相关的方法进行测试
+    path0 = "C:/Users/DELL/Desktop/paths.txt"
+    path = []
+    with open(path0) as f:
+        for line in f:
+            path.append(line.split('"')[1]) #得到图片路径列表
+    #测试类迭代器
+    fd1 = FaceDataset(path)
+    #i=0
+    for im in fd1:
+        '''#先在桌面创建名为'tu'的文件夹，还要把上面生成器和迭代器的返回值改为图片而不是图片的ndarray
+        im.save("C:/Users/DELL/Desktop/tu/tu"  + str(i) + ".jpg")
+        i+=1'''
+        print(im)
+    #测试生成器函数
+    fd2 = FaceDataset(path)
+    #j=0
+    g = fd2.image_generator()
+    while True:
+        try:
+            im = next(g)
+            '''#先在桌面创建名为'tu'的文件夹
+            im.save("C:/Users/DELL/Desktop/pic/tu"  + str(j) + ".jpg")
+            j+=1'''
+            print(im)
+        except StopIteration as si:
+            print(si.value)
+            break
+    print('*'*30)
+    # 测试__getitem__方法
+    fd = FaceDataset(path)
+    try:
+        im=fd[3]
+        print(im)
+        #im.show()
+        im1=fd[100]
+        print(im1)
+        #im1.show()
+    except Exception as e:
+        print(e)
+if __name__ == "__main__":
+    main()
+        
+        
+        
+        
